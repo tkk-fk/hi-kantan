@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>比を簡単にしよう｜フラッシュカード</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&family=BIZ+UDPGothic:wght@700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f6f4ee; --ink:#2b2b2b; --sub:#6b6b6b; --line:#d9d5cb;
+  --card:#ffffff; --red:#e5392b; --accent:#2c7a7b; --accent-l:#e3f1f0;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overscroll-behavior:none}
+body{
+  font-family:"Zen Maru Gothic","BIZ UDPGothic","Hiragino Maru Gothic ProN",sans-serif;
+  background:var(--bg);color:var(--ink);
+  height:100vh;height:100dvh;overflow:hidden;
+  touch-action:manipulation;user-select:none;-webkit-user-select:none;
+}
+button{font-family:inherit;color:inherit;touch-action:manipulation;cursor:pointer}
+.screen{display:none;height:100%;flex-direction:column;
+  padding:max(12px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left))}
+.screen.active{display:flex}
+
+/* ===== 設定画面 ===== */
+#setup{align-items:center;overflow-y:auto}
+.setup-inner{width:100%;max-width:640px;margin:auto;display:flex;flex-direction:column;gap:clamp(14px,3vh,26px);padding:8px 0}
+h1{text-align:center;font-size:clamp(26px,6vw,40px);font-weight:700;letter-spacing:.05em}
+.group h2{font-size:clamp(17px,3.6vw,21px);font-weight:700;margin-bottom:8px;color:var(--sub)}
+.opts{display:grid;gap:10px}
+.opts.c3{grid-template-columns:repeat(3,1fr)}
+.opts.c2{grid-template-columns:repeat(2,1fr)}
+.opt{min-height:56px;border:3px solid var(--line);background:var(--card);border-radius:14px;
+  font-size:clamp(19px,4.4vw,24px);font-weight:700;padding:8px 4px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+.opt small{font-family:"BIZ UDPGothic",sans-serif;font-size:.72em;color:var(--sub);display:flex;align-items:center;gap:.15em}
+.opt[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-l);color:#1d5556}
+.opt[aria-pressed="true"] small{color:#1d5556}
+.mini-frac{display:inline-flex;flex-direction:column;align-items:center;line-height:1;font-size:.78em}
+.mini-frac i{display:block;width:100%;min-width:.8em;border-top:2px solid currentColor;margin:1px 0}
+.start{min-height:68px;border:none;border-radius:18px;background:var(--accent);color:#fff;
+  font-size:clamp(24px,5.5vw,30px);font-weight:700;letter-spacing:.2em;box-shadow:0 4px 0 #1f5a5b}
+.start:active{transform:translateY(3px);box-shadow:0 1px 0 #1f5a5b}
+.credit{text-align:center;font-size:12px;color:var(--sub)}
+
+/* ===== 問題画面 ===== */
+.topbar{display:flex;justify-content:space-between;align-items:center;min-height:48px}
+.back{min-width:44px;min-height:44px;padding:0 14px;border:2px solid var(--line);background:var(--card);border-radius:12px;font-size:17px;font-weight:700}
+.progress{font-size:18px;font-weight:700;color:var(--sub);font-family:"BIZ UDPGothic",sans-serif}
+.card{cursor:pointer;flex:1;min-height:0;margin:10px 0;background:var(--card);border-radius:22px;border:3px solid var(--line);
+  position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.eqwrap{position:relative;padding:.45em .3em;font-size:80px}
+.eqwrap.hint{padding:2.05em .3em}
+.eq{display:flex;align-items:center;white-space:nowrap;font-family:"BIZ UDPGothic","Zen Maru Gothic",sans-serif;font-weight:700;line-height:1}
+.term{display:inline-flex;align-items:center;justify-content:center}
+.sym{display:inline-block;padding:0 .22em}
+.sym.colon{padding:0 .18em}
+.frac{display:inline-flex;flex-direction:column;align-items:center;font-size:.72em;line-height:1.05}
+.frac .bar{display:block;width:115%;border-top:.07em solid currentColor;margin:.08em 0}
+.box{display:inline-flex;align-items:center;justify-content:center;width:1.35em;height:1.2em;
+  border:.06em solid var(--ink);border-radius:.08em;color:var(--red)}
+.box.shown{border-color:var(--red)}
+svg.arrows{position:absolute;left:0;top:0;pointer-events:none;overflow:visible}
+.hintlabel{position:absolute;pointer-events:none;transform:translate(-50%,-50%);min-width:44px;min-height:44px;
+  border:.06em dashed var(--red);border-radius:999px;background:#fff;color:var(--red);
+  font-family:"BIZ UDPGothic",sans-serif;font-weight:700;line-height:1;padding:.12em .4em;
+  display:flex;align-items:center;justify-content:center;white-space:nowrap}
+.hintlabel.open{border-color:transparent;background:transparent}
+.actions{display:flex;justify-content:center}
+.main-btn{min-width:min(320px,80vw);min-height:64px;border:none;border-radius:18px;
+  font-size:clamp(22px,5vw,28px);font-weight:700;letter-spacing:.12em;
+  background:var(--accent);color:#fff;box-shadow:0 4px 0 #1f5a5b}
+.main-btn.next{background:#fff;color:var(--accent);border:3px solid var(--accent);box-shadow:0 4px 0 var(--accent)}
+.main-btn:active{transform:translateY(3px);box-shadow:0 1px 0 #1f5a5b}
+
+/* ===== おわり画面 ===== */
+#end{align-items:center;justify-content:center;gap:28px}
+#end p{font-size:clamp(28px,7vw,44px);font-weight:700}
+#end .row{display:flex;flex-direction:column;gap:14px;width:min(360px,86vw)}
+#end .main-btn{min-width:0;width:100%}
+
+@media (orientation:landscape) and (max-height:520px){
+  .opt{min-height:48px}
+  .start{min-height:56px}
+  .main-btn{min-height:52px}
+  .setup-inner{gap:10px}
+}
+</style>
+</head>
+<body>
+
+<!-- 設定画面 -->
+<section id="setup" class="screen active">
+  <div class="setup-inner">
+    <h1>比を簡単にしよう</h1>
+
+    <div class="group">
+      <h2>数の種類</h2>
+      <div class="opts c3" data-key="type">
+        <button class="opt" data-val="int" aria-pressed="true">整数<small>20：6</small></button>
+        <button class="opt" data-val="dec" aria-pressed="false">小数<small>0.6：0.4</small></button>
+        <button class="opt" data-val="frac" aria-pressed="false">分数<small><span class="mini-frac">2<i></i>3</span>：<span class="mini-frac">1<i></i>2</span></small></button>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>ヒント</h2>
+      <div class="opts c2" data-key="hint">
+        <button class="opt" data-val="on" aria-pressed="true">あり</button>
+        <button class="opt" data-val="off" aria-pressed="false">なし</button>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>問題数</h2>
+      <div class="opts c3" data-key="count">
+        <button class="opt" data-val="5" aria-pressed="false">5問</button>
+        <button class="opt" data-val="10" aria-pressed="true">10問</button>
+        <button class="opt" data-val="15" aria-pressed="false">15問</button>
+      </div>
+    </div>
+
+    <button class="start" id="startBtn">スタート</button>
+    <p class="credit">特別支援教材開発研究所</p>
+  </div>
+</section>
+
+<!-- 問題画面 -->
+<section id="quiz" class="screen">
+  <div class="topbar">
+    <button class="back" id="backBtn" aria-label="設定にもどる">← もどる</button>
+    <span class="progress" id="progress"></span>
+  </div>
+  <div class="card" id="card">
+    <div class="eqwrap" id="eqwrap">
+      <div class="eq" id="eq"></div>
+    </div>
+  </div>
+  <div class="actions">
+    <button class="main-btn" id="mainBtn">こたえ</button>
+  </div>
+</section>
+
+<!-- おわり画面 -->
+<section id="end" class="screen">
+  <p>おつかれさま！</p>
+  <div class="row">
+    <button class="main-btn" id="againBtn">もういちど</button>
+    <button class="main-btn next" id="toSetupBtn">せってい</button>
+  </div>
+</section>
+
+<script>
+'use strict';
+/* ========== 数の道具 ========== */
+function gcd(a, b){ a = Math.abs(a); b = Math.abs(b); while (b){ const t = a % b; a = b; b = t; } return a; }
+function lcm(a, b){ return a / gcd(a, b) * b; }
+function ri(lo, hi){ return lo + Math.floor(Math.random() * (hi - lo + 1)); }
+function pick(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
+function coprimePair(max){
+  let p, q;
+  do { p = ri(1, max); q = ri(1, max); } while (p === q || gcd(p, q) !== 1);
+  return [p, q];
+}
+/* 小数は100倍した整数（h）で持ち、浮動小数点誤差を避ける */
+function fmtDec(h){
+  const ip = Math.floor(h / 100), r = h % 100;
+  if (r === 0) return String(ip);
+  if (r % 10 === 0) return ip + '.' + (r / 10);
+  return ip + '.' + String(r).padStart(2, '0');
+}
+
+/* ========== 問題づくり ========== */
+/* 返り値: {type, left:[term,term], right:[p,q], op:'÷'|'×', f, blank:0|1}
+   left[i] を op f すると right[i] になり、right は最も簡単な整数の比 */
+function genInt(){
+  for (;;){
+    const [p, q] = coprimePair(9);
+    const k = ri(2, 12);
+    const a = p * k, b = q * k;
+    if (a > 100 || b > 100) continue;
+    return { type:'int', left:[{kind:'int', v:a}, {kind:'int', v:b}], right:[p, q], op:'÷', f:k };
+  }
+}
+function genDec(){
+  for (;;){
+    const [p, q] = coprimePair(9);
+    const f = pick([10, 10, 10, 5, 5, 2, 2, 4, 20]);   // 100の約数なので p*100/f は必ず整数
+    const ah = p * 100 / f, bh = q * 100 / f;
+    if (ah % 100 === 0 && bh % 100 === 0) continue;   // どちらも整数になるものは除く
+    return { type:'dec', left:[{kind:'dec', h:ah}, {kind:'dec', h:bh}], right:[p, q], op:'×', f:f };
+  }
+}
+function genFrac(){
+  for (;;){
+    const d1 = ri(2, 9), d2 = ri(2, 9);
+    const n1 = ri(1, d1 - 1), n2 = ri(1, d2 - 1);
+    if (gcd(n1, d1) !== 1 || gcd(n2, d2) !== 1) continue;  // 約分済みの分数だけ
+    if (n1 * d2 === n2 * d1) continue;                      // 1：1 は除く
+    const L = lcm(d1, d2);
+    const A = n1 * L / d1, B = n2 * L / d2;
+    const g = gcd(A, B);
+    if (L % g !== 0) continue;   // かける数が整数になるものだけ（×7.5 などを避ける）
+    const p = A / g, q = B / g;
+    if (p > 20 || q > 20) continue;
+    return { type:'frac', left:[{kind:'frac', n:n1, d:d1}, {kind:'frac', n:n2, d:d2}], right:[p, q], op:'×', f:L / g };
+  }
+}
+const GEN = { int:genInt, dec:genDec, frac:genFrac };
+function probKey(pr){ return JSON.stringify([pr.left, pr.blank]); }
+function makeSet(type, count){
+  const list = [], seen = new Set();
+  let tries = 0;
+  while (list.length < count && tries < 5000){
+    tries++;
+    const pr = GEN[type]();
+    pr.blank = Math.random() < 0.5 ? 1 : 0;
+    const key = probKey(pr);
+    if (seen.has(key)) continue;
+    seen.add(key); list.push(pr);
+  }
+  return list;
+}
+function termValue(t){   // 検算用（分数は分子・分母で返す）
+  if (t.kind === 'int') return [t.v, 1];
+  if (t.kind === 'dec') return [t.h, 100];
+  return [t.n, t.d];
+}
+
+/* ========== 状態 ========== */
+const settings = { type:'int', hint:'on', count:10 };
+let problems = [], idx = 0, step = 0;
+
+/* ========== 画面切りかえ ========== */
+function show(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === id));
+}
+
+/* ========== 設定画面 ========== */
+document.querySelectorAll('.opts').forEach(group => {
+  group.addEventListener('click', e => {
+    const btn = e.target.closest('.opt'); if (!btn) return;
+    group.querySelectorAll('.opt').forEach(b => b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'));
+    const key = group.dataset.key, val = btn.dataset.val;
+    settings[key] = key === 'count' ? Number(val) : val;
+  });
+});
+function startQuiz(){
+  problems = makeSet(settings.type, settings.count);
+  idx = 0;
+  show('quiz');
+  renderProblem();
+}
+document.getElementById('startBtn').addEventListener('click', startQuiz);
+document.getElementById('backBtn').addEventListener('click', () => show('setup'));
+document.getElementById('againBtn').addEventListener('click', startQuiz);
+document.getElementById('toSetupBtn').addEventListener('click', () => show('setup'));
+
+/* ========== 問題画面 ========== */
+const eqwrap = document.getElementById('eqwrap');
+const eqEl = document.getElementById('eq');
+const card = document.getElementById('card');
+const mainBtn = document.getElementById('mainBtn');
+
+function termHTML(t){
+  if (t.kind === 'int') return String(t.v);
+  if (t.kind === 'dec') return fmtDec(t.h);
+  return '<span class="frac"><span>' + t.n + '</span><span class="bar"></span><span>' + t.d + '</span></span>';
+}
+function renderProblem(){
+  const pr = problems[idx];
+  step = 0;
+  document.getElementById('progress').textContent = (idx + 1) + ' / ' + problems.length;
+
+  const r = pr.right.map((v, i) => i === pr.blank
+    ? '<span class="box" id="box"></span>'
+    : String(v));
+  eqEl.innerHTML =
+    '<span class="term" id="t0">' + termHTML(pr.left[0]) + '</span>' +
+    '<span class="sym colon">:</span>' +
+    '<span class="term" id="t1">' + termHTML(pr.left[1]) + '</span>' +
+    '<span class="sym">=</span>' +
+    '<span class="term" id="t2">' + r[0] + '</span>' +
+    '<span class="sym colon">:</span>' +
+    '<span class="term" id="t3">' + r[1] + '</span>';
+
+  eqwrap.classList.toggle('hint', settings.hint === 'on');
+  eqwrap.querySelectorAll('svg.arrows,.hintlabel').forEach(n => n.remove());
+  hintParts = null;
+  if (settings.hint === 'on') buildHint(pr);
+  updateButton();
+  layout();
+}
+
+/* --- ヒント（矢印＋タップで「÷2」などを表示） --- */
+const SVGNS = 'http://www.w3.org/2000/svg';
+let hintParts = null;
+function buildHint(pr){
+  const svg = document.createElementNS(SVGNS, 'svg');
+  svg.setAttribute('class', 'arrows');
+  svg.innerHTML =
+    '<defs><marker id="ah" markerUnits="userSpaceOnUse" orient="auto" markerWidth="10" markerHeight="10" refX="0" refY="0">' +
+    '<path fill="var(--red)"/></marker></defs>';
+  const labels = [], paths = [];
+  for (let i = 0; i < 2; i++){
+    const p = document.createElementNS(SVGNS, 'path');
+    p.setAttribute('fill', 'none');
+    p.setAttribute('stroke', 'var(--red)');
+    p.setAttribute('stroke-linecap', 'butt');
+    p.setAttribute('marker-end', 'url(#ah)');
+    svg.appendChild(p); paths.push(p);
+
+    const lb = document.createElement('span');
+    lb.className = 'hintlabel';
+    lb.textContent = '？';
+    lb.open = () => { lb.textContent = pr.op + pr.f; lb.classList.add('open'); };
+    labels.push(lb);
+  }
+  eqwrap.appendChild(svg);
+  labels.forEach(l => eqwrap.appendChild(l));
+  hintParts = { svg, paths, labels, marker: svg.querySelector('marker'), head: svg.querySelector('marker path') };
+}
+function drawHint(){
+  if (!hintParts || !eqwrap.contains(hintParts.svg)) return;
+  const fs = parseFloat(getComputedStyle(eqwrap).fontSize);
+  const W = eqwrap.offsetWidth, H = eqwrap.offsetHeight;
+  const { svg, paths, labels, marker, head } = hintParts;
+  svg.setAttribute('width', W); svg.setAttribute('height', H);
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  const sw = Math.max(3, fs * 0.1);           // 線の太さ
+  const hs = fs * 0.34;                        // 矢じりの大きさ
+  marker.setAttribute('markerWidth', hs * 2); marker.setAttribute('markerHeight', hs * 2);
+  marker.setAttribute('refX', hs * 0.55); marker.setAttribute('refY', 0);
+  marker.setAttribute('viewBox', (-hs) + ' ' + (-hs) + ' ' + (hs * 2) + ' ' + (hs * 2));
+  head.setAttribute('d', 'M' + (-hs * 0.45) + ',' + (-hs * 0.62) + ' L' + (hs * 0.55) + ',0 L' + (-hs * 0.45) + ',' + (hs * 0.62) + ' Z');
+
+  const base = eqwrap.getBoundingClientRect();
+  const rc = id => { const r = document.getElementById(id).getBoundingClientRect();
+    return { l:r.left - base.left, r:r.right - base.left, t:r.top - base.top, b:r.bottom - base.top, cx:(r.left + r.right) / 2 - base.left }; };
+  const t0 = rc('t0'), t1 = rc('t1'), t2 = rc('t2'), t3 = rc('t3');
+  const pairs = [[t0, t2, -1], [t1, t3, 1]];   // -1:上の矢印, 1:下の矢印
+  pairs.forEach(([a, b, dir], i) => {
+    const y0 = dir < 0 ? Math.min(a.t, b.t) - fs * 0.12 : Math.max(a.b, b.b) + fs * 0.12;
+    const x1 = a.cx - fs * 0.05, x2 = b.cx - fs * 0.12;
+    const h = fs * 1.05, dx = x2 - x1;
+    const yc = y0 + dir * h;
+    const d = 'M' + x1 + ',' + y0 + ' C' + (x1 + dx * 0.18) + ',' + yc + ' ' + (x2 - dx * 0.25) + ',' + yc + ' ' + x2 + ',' + (y0 + dir * fs * 0.08);
+    paths[i].setAttribute('d', d); paths[i].setAttribute('stroke-width', sw);
+    const apexY = y0 + dir * h * 0.75;
+    const lb = labels[i];
+    lb.style.fontSize = (fs * 0.55) + 'px';
+    lb.style.left = ((x1 + x2) / 2) + 'px';
+    lb.style.top = (apexY + dir * fs * 0.5) + 'px';
+  });
+}
+
+/* --- 画面の大きさに合わせて式の文字サイズを決める --- */
+function layout(){
+  if (!document.getElementById('quiz').classList.contains('active')) return;
+  eqwrap.style.fontSize = '100px';
+  const w = eqwrap.offsetWidth, h = eqwrap.offsetHeight;
+  const cw = card.clientWidth, ch = card.clientHeight;
+  if (!w || !h || !cw || !ch) return;
+  const s = Math.min(cw * 0.92 / w, ch * 0.92 / h, 1.3);
+  eqwrap.style.fontSize = (100 * s) + 'px';
+  drawHint();
+}
+
+/* --- 1つのボタンで順に進む ---
+   ヒントあり: 上の？ → 下の？ → こたえ → つぎへ
+   ヒントなし: こたえ → つぎへ */
+function stepsFor(){ return settings.hint === 'on' ? ['top', 'bottom', 'answer', 'next'] : ['answer', 'next']; }
+function updateButton(){
+  const cur = stepsFor()[step];
+  const last = idx + 1 >= problems.length;
+  mainBtn.textContent = cur === 'next' ? (last ? 'おわり' : 'つぎへ') : (cur === 'answer' ? 'こたえ' : 'ヒント');
+  mainBtn.classList.toggle('next', cur === 'next');
+}
+function onMain(){
+  const pr = problems[idx];
+  const cur = stepsFor()[step];
+  if (cur === 'top' || cur === 'bottom'){
+    hintParts.labels[cur === 'top' ? 0 : 1].open();
+  } else if (cur === 'answer'){
+    const box = document.getElementById('box');
+    box.textContent = pr.right[pr.blank];
+    box.classList.add('shown');
+  } else {
+    if (idx + 1 < problems.length){ idx++; renderProblem(); } else { show('end'); }
+    return;
+  }
+  step++;
+  updateButton();
+  layout();
+}
+mainBtn.addEventListener('click', onMain);
+card.addEventListener('click', onMain);
+document.addEventListener('keydown', e => {
+  if (!document.getElementById('quiz').classList.contains('active')) return;
+  if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); onMain(); }
+});
+
+window.addEventListener('resize', layout);
+window.addEventListener('orientationchange', () => setTimeout(layout, 200));
+if (window.visualViewport) window.visualViewport.addEventListener('resize', layout);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(layout);
+document.addEventListener('gesturestart', e => e.preventDefault());
+</script>
+</body>
+</html>
